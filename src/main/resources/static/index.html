@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slot Booking Engine - Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --text-color: #333;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --error: #ef4444;
+            --card-bg: #ffffff;
+            --border: #e5e7eb;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        h1, h2 { text-align: center; }
+        .panel {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border-top: 4px solid var(--primary);
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+
+        .form-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .form-group input {
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        /* Slots Display */
+        #slots-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .slot-card {
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 4px;
+            text-align: left;
+            flex: 1 1 200px;
+            background-color: #f9fafb;
+        }
+
+        /* Stress Test Results Grid */
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 1rem 0;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .stat-success { color: var(--success); }
+        .stat-error { color: var(--error); }
+
+        #results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+            gap: 5px;
+            margin-top: 1rem;
+        }
+        .result-box {
+            height: 30px;
+            border-radius: 4px;
+            background-color: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: white;
+            font-weight: bold;
+            animation: fadeIn 0.3s ease-in;
+        }
+        .result-success { background-color: var(--success); }
+        .result-error { background-color: var(--error); }
+
+        .output-box {
+            margin-top: 1rem;
+            padding: 10px;
+            background: #f3f4f6;
+            border-left: 4px solid var(--primary);
+            font-family: monospace;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Slot Booking Engine Dashboard</h1>
+<p style="text-align: center;">Complete visualization for Hackathon judging.</p>
+
+<!-- PANEL 1: Create Slot -->
+<div class="panel">
+    <h2>1. Host a New Slot</h2>
+    <div class="form-group">
+        <input type="number" id="host-id" placeholder="Host ID (e.g., 1)" required>
+        <input type="datetime-local" id="start-time" required>
+        <input type="datetime-local" id="end-time" required>
+        <button id="create-slot-btn">Create Slot</button>
+    </div>
+    <div id="create-slot-output" class="output-box"></div>
+</div>
+
+<!-- PANEL 2: View Slots & Stress Test -->
+<div class="panel">
+    <h2>2. Available Slots & Concurrency Test</h2>
+    <button id="load-slots-btn">Load Available Slots</button>
+    <div id="slots-container"></div>
+
+    <hr style="margin: 2rem 0; border-top: 1px solid #e5e7eb;">
+
+    <p>This will fire <strong>50 concurrent POST requests</strong> attempting to book the exact same slot at the exact same millisecond.</p>
+    <button id="stress-test-btn" disabled>Run Stress Test (50 Requests)</button>
+
+    <div class="stats">
+        <span class="stat-success">Successes: <span id="success-count">0</span></span>
+        <span class="stat-error">Conflicts (Blocked): <span id="error-count">0</span></span>
+    </div>
+    <div id="winner-display" style="text-align: center; font-size: 1.5rem; color: var(--primary); margin-top: 1rem;"></div>
+
+    <div id="results-grid"></div>
+</div>
+
+<!-- PANEL 3: Booking Management -->
+<div class="panel">
+    <h2>3. Manage Bookings</h2>
+
+    <div class="form-group">
+        <input type="number" id="lookup-booking-id" placeholder="Booking ID">
+        <button id="lookup-booking-btn">Get Booking Details</button>
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+        <input type="number" id="cancel-booking-id" placeholder="Booking ID">
+        <input type="number" id="cancel-user-id" placeholder="Client User ID">
+        <button id="cancel-booking-btn" style="background-color: var(--error);">Cancel Booking</button>
+    </div>
+
+    <div id="booking-output" class="output-box"></div>
+</div>
+
+<script>
+    // Endpoints mapped from backend controllers
+    const API_SLOTS = '/api/v1/slots';
+    const API_AVAILABLE_SLOTS = '/api/v1/slots/available';
+    const API_BOOKINGS = '/api/v1/bookings';
+
+    let targetSlotId = null;
+
+    // Utility to format dates for display
+    const formatDate = (isoString) => new Date(isoString).toLocaleString();
+
+    // --- PANEL 1: Create Slot ---
+    document.getElementById('create-slot-btn').addEventListener('click', async () => {
+        const hostId = document.getElementById('host-id').value;
+        const startTimeRaw = document.getElementById('start-time').value;
+        const endTimeRaw = document.getElementById('end-time').value;
+        const out = document.getElementById('create-slot-output');
+        out.style.display = 'block';
+
+        if (!hostId || !startTimeRaw || !endTimeRaw) {
+            out.innerText = "Error: Please fill in all fields.";
+            return;
+        }
+
+        // Convert local HTML time to ISO Instant for Spring Boot
+        const payload = {
+            hostId: parseInt(hostId),
+            startTime: new Date(startTimeRaw).toISOString(),
+            endTime: new Date(endTimeRaw).toISOString()
+        };
+
+        try {
+            const response = await fetch(API_SLOTS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const json = await response.json();
+            out.innerText = JSON.stringify(json, null, 2);
+        } catch (err) {
+            out.innerText = "Request failed: " + err.message;
+        }
+    });
+
+    // --- PANEL 2: Load Slots & Stress Test ---
+    const loadSlotsBtn = document.getElementById('load-slots-btn');
+    const slotsContainer = document.getElementById('slots-container');
+    const stressTestBtn = document.getElementById('stress-test-btn');
+
+    loadSlotsBtn.addEventListener('click', async () => {
+        loadSlotsBtn.disabled = true;
+        slotsContainer.innerHTML = 'Loading...';
+        targetSlotId = null;
+        stressTestBtn.disabled = true;
+
+        try {
+            const response = await fetch(API_AVAILABLE_SLOTS);
+            const responseBody = await response.json();
+
+            // Assuming ApiResponse shape: { success: true, data: [...] }
+            const slots = responseBody.data || [];
+
+            slotsContainer.innerHTML = '';
+
+            if (slots.length === 0) {
+                slotsContainer.innerHTML = '<p>No slots found. Create one above!</p>';
+            }
+
+            slots.forEach(slot => {
+                const card = document.createElement('div');
+                card.className = 'slot-card';
+                card.innerHTML = `
+                    <strong>Slot ID: ${slot.slotId}</strong><br>
+                    Host: ${slot.hostName || slot.hostId}<br>
+                    Start: ${formatDate(slot.startTime)}<br>
+                    End: ${formatDate(slot.endTime)}<br>
+                    Status: <strong>${slot.status}</strong>
+                `;
+                slotsContainer.appendChild(card);
+
+                // Grab the first available slot ID for the stress test
+                if (slot.status === 'AVAILABLE' && !targetSlotId) {
+                    targetSlotId = slot.slotId;
+                }
+            });
+
+            if (targetSlotId) {
+                stressTestBtn.disabled = false;
+            }
+        } catch (error) {
+            slotsContainer.innerHTML = `<p style="color:red">Failed to connect to ${API_AVAILABLE_SLOTS}.</p>`;
+        }
+        loadSlotsBtn.disabled = false;
+    });
+
+    stressTestBtn.addEventListener('click', async () => {
+        if (!targetSlotId) return;
+
+        stressTestBtn.disabled = true;
+        document.getElementById('results-grid').innerHTML = '';
+        document.getElementById('winner-display').innerHTML = '';
+
+        let successes = 0;
+        let errors = 0;
+        const REQUEST_COUNT = 50;
+
+        const requests = Array.from({ length: REQUEST_COUNT }).map((_, index) => {
+            return fetch(API_BOOKINGS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    slotId: targetSlotId,
+                    clientId: index + 1,
+                    idempotencyKey: `stress-${Date.now()}-${index}`
+                })
+            })
+            .then(response => {
+                const box = document.createElement('div');
+                box.className = 'result-box';
+
+                if (response.ok) {
+                    box.classList.add('result-success');
+                    box.textContent = '✓';
+                    successes++;
+
+                    response.json().then(json => {
+                        const winnerDisplay = document.getElementById('winner-display');
+                        // Extract bookingId from ApiResponse.data
+                        const bId = json.data?.bookingId || 'N/A';
+                        winnerDisplay.innerHTML = `🎉 <strong>Race Condition Prevented!</strong><br> Winning Booking ID: ${bId}`;
+
+                        // Auto-fill the lookup field for convenience
+                        document.getElementById('lookup-booking-id').value = bId;
+                        document.getElementById('cancel-booking-id').value = bId;
+                    });
+                } else {
+                    box.classList.add('result-error');
+                    box.textContent = '✕';
+                    errors++;
+                }
+
+                document.getElementById('results-grid').appendChild(box);
+                document.getElementById('success-count').textContent = successes;
+                document.getElementById('error-count').textContent = errors;
+            })
+            .catch(() => {
+                const box = document.createElement('div');
+                box.className = 'result-box result-error';
+                box.textContent = '!';
+                document.getElementById('results-grid').appendChild(box);
+                errors++;
+                document.getElementById('error-count').textContent = errors;
+            });
+        });
+
+        await Promise.all(requests);
+        stressTestBtn.disabled = false;
+    });
+
+    // --- PANEL 3: Manage Bookings ---
+    const handleBookingAction = async (url, options = {}) => {
+        const out = document.getElementById('booking-output');
+        out.style.display = 'block';
+        out.innerText = "Loading...";
+        try {
+            const response = await fetch(url, options);
+            const json = await response.json();
+            out.innerText = JSON.stringify(json, null, 2);
+        } catch (err) {
+            out.innerText = "Request failed: " + err.message;
+        }
+    }
+
+    document.getElementById('lookup-booking-btn').addEventListener('click', () => {
+        const id = document.getElementById('lookup-booking-id').value;
+        if (id) handleBookingAction(`${API_BOOKINGS}/${id}`);
+    });
+
+    document.getElementById('cancel-booking-btn').addEventListener('click', () => {
+        const bId = document.getElementById('cancel-booking-id').value;
+        const uId = document.getElementById('cancel-user-id').value;
+        if (bId && uId) {
+            handleBookingAction(`${API_BOOKINGS}/${bId}/cancel`, {
+                method: 'PUT',
+                headers: { 'X-User-Id': uId }
+            });
+        } else {
+            alert("Both Booking ID and User ID are required to cancel.");
+        }
+    });
+</script>
+</body>
+</html>
