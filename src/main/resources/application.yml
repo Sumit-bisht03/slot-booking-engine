@@ -2,6 +2,9 @@ spring:
   application:
     name: slot-booking-engine
 
+server:
+  port: ${PORT:8080}
+
   # --- Database Configuration ---
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:slotify_db}

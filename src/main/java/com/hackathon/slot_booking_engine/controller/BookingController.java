@@ -34,7 +34,7 @@ public class BookingController {
 
         BookingResponseDto response = bookingService.createBooking(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("created",response));
+                .body(ApiResponse.success("Booking created",response));
     }
 
     @GetMapping("/{bookingId}")
@@ -44,7 +44,7 @@ public class BookingController {
             @PathVariable Long bookingId) {
 
         BookingResponseDto response = bookingService.getBookingById(bookingId);
-        return ResponseEntity.ok(ApiResponse.success("created",response));
+        return ResponseEntity.ok(ApiResponse.success("Booking details",response));
     }
 
     @PutMapping("/{bookingId}/cancel")
@@ -57,6 +57,6 @@ public class BookingController {
             @RequestHeader("X-User-Id") Long userId) {
 
         BookingResponseDto response = bookingService.cancelBooking(bookingId, userId);
-        return ResponseEntity.ok(ApiResponse.success("Cancelled",response));
+        return ResponseEntity.ok(ApiResponse.success("Booking cancelled",response));
     }
 }
