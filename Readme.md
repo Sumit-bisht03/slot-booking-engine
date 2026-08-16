@@ -4,6 +4,11 @@ A Calendly + Eventbrite–style booking platform built for a 10-day hackathon, f
 
 Every pattern below exists to close a specific failure mode a naive booking API would hit in production — not as a checklist exercise.
 
+## Live Demo
+
+- **App:** https://slot-booking-engine-production.up.railway.app/
+- **API docs (Swagger):** https://slot-booking-engine-production.up.railway.app/swagger-ui/index.html
+
 ---
 
 ## Architecture Overview
